@@ -7,22 +7,23 @@ from io import BytesIO
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
-
+url_base = 'http://127.0.0.1:8000/api'
 
 def  test_upload_file():
-    url = 'http://127.0.0.1:8000/api/uploadfile'
+    url = f'{url_base}/uploadfile'
     with open('data/two_month_hot_mess_data.csv', 'rb') as f:
         file = {'file': f}
         resp = requests.post(url=url, files=file) 
         print(resp.json())
 
 def test_ping():
-    url = 'http://127.0.0.1:8000/api/ping'
+    url = f'{url_base}/ping'
     resp = requests.get(url=url)
     print(resp.json()['rows'], resp.json()['columns'])
+
 def test_chat():
-    url = 'http://127.0.0.1:8000/api/chat'
-    # Test with image model
+    url = f'{url_base}/chat'
+    # Test chat and python for chart generation
     data = {
         'message': 'I feel like a hot mess today...can you show the trend by creating python code f the "hot_mess_score" column. only return the python code and nothing else',
         'model': 'gpt-4o-mini' 
@@ -42,29 +43,7 @@ def test_chat():
     
     # Check if response is an image (PNG)
     content_type = resp.headers.get('content-type', '')
-    if 'image/png' in content_type:
-        # Get image bytes
-        image_bytes = resp.content
-        print(f"✓ Received PNG image ({len(image_bytes)} bytes)")
-        
-        # Verify it's a valid PNG by trying to open it with PIL
-        try:
-            img = Image.open(BytesIO(image_bytes))
-            print(f"✓ Image is valid PNG")
-            print(f"  Size: {img.size[0]}x{img.size[1]} pixels")
-            print(f"  Format: {img.format}")
-            print(f"  Mode: {img.mode}")
-            
-            # Save to file for inspection
-            output_path = 'tests/generated_image.png'
-            os.makedirs('tests', exist_ok=True)
-            with open(output_path, 'wb') as f:
-                f.write(image_bytes)
-            print(f"  ✓ Saved to: {output_path}")
-            
-        except Exception as e:
-            print(f"✗ Invalid image: {e}")
-    else:
+    if content_type == 'application/json':
         # Handle JSON response (for chat models or errors)
         print(f"Response content-type: {content_type}")
         try:
