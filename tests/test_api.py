@@ -1,108 +1,84 @@
-import requests
 import os
-import json
-import re
-from PIL import Image
-from io import BytesIO
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-url_base = 'http://127.0.0.1:8000/api'
+import sys
 
-def  test_upload_file():
-    url = f'{url_base}/uploadfile'
-    with open('data/two_month_hot_mess_data.csv', 'rb') as f:
-        file = {'file': f}
-        resp = requests.post(url=url, files=file) 
-        print(resp.json())
+# Add parent directory to path to import from api
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from api.services import AppService
+
+# Initialize service instance for testing
+app_service = AppService()
+
+def test_upload_file():
+    """Test file upload functionality."""
+    file_path = 'data/two_month_hot_mess_data.csv'
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+        result = app_service.upload_file(file_content, 'two_month_hot_mess_data.csv')
+        
+        if "error" in result:
+            print(f"✗ Error: {result.get('error')}")
+            return False
+        
+        print(f"✓ File uploaded successfully")
+        print(f"  Rows: {result.get('rows')}, Columns: {result.get('columns')}")
+        return True
 
 def test_ping():
-    url = f'{url_base}/ping'
-    resp = requests.get(url=url)
-    print(resp.json()['rows'], resp.json()['columns'])
+    """Test ping endpoint."""
+    result = app_service.ping()
+    print(f"✓ Ping response: {result.get('message')}")
 
-def test_chat():
-    url = f'{url_base}/chat'
-    # Test chat and python for chart generation
-    data = {
-        'message': 'I feel like a hot mess today...can you show the trend by creating python code f the "hot_mess_score" column. only return the python code and nothing else',
-        'model': 'gpt-4o-mini' 
-    }
-    resp = requests.post(url=url, json=data)
+def test_chat(message: str):
+    """Test chat functionality."""
+    result = app_service.chat(message, 'gpt-4o-mini')
     
-    # Check response status
-    print(f"Response status: {resp.status_code}")
+    if "error" in result:
+        print(f"✗ Error: {result.get('error')}")
+        return False
     
-    if resp.status_code != 200:
-        print(f"✗ Error: {resp.status_code}")
-        try:
-            print(resp.json())
-        except:
-            print(resp.text)
-        return
-    
-    # Check if response is an image (PNG)
-    content_type = resp.headers.get('content-type', '')
-    if content_type == 'application/json':
-        # Handle JSON response (for chat models or errors)
-        print(f"Response content-type: {content_type}")
-        try:
-            response_data = resp.json()
-            reply = response_data.get('reply', '')
-            print(f"Reply received: {len(reply)} characters")
-            
-            # Extract Python code from triple backticks
-            # Match ```python ... ``` or ``` ... ```
-            code_pattern = r'```(?:python)?\s*\n(.*?)\n```'
-            matches = re.findall(code_pattern, reply, re.DOTALL)
-            
-            if matches:
-                # Use the first code block found
-                python_code = matches[0].strip()
-                print(f"✓ Extracted Python code ({len(python_code)} characters)")
-                print(f"Code preview:\n{python_code[:200]}...")
-                
-                # Create a namespace for code execution
-                exec_namespace = {
-                    'plt': plt,
-                    'matplotlib': matplotlib,
-                    'pd': __import__('pandas'),
-                    'np': __import__('numpy'),
-                    'os': os,
-                }
-                
-                # Execute the code
-                try:
-                    exec(python_code, exec_namespace)
-                    print("✓ Python code executed successfully")
-                    
-                    # Check if any matplotlib figures exist and save them
-                    if plt.get_fignums():
-                        output_path = 'tests/generated_plot.png'
-                        os.makedirs('tests', exist_ok=True)
-                        plt.savefig(output_path, dpi=150, bbox_inches='tight')
-                        plt.close('all')  # Close all figures
-                        print(f"  ✓ Plot saved to: {output_path}")
-                    else:
-                        print("  ℹ No matplotlib figures found to save")
-                        
-                except Exception as e:
-                    print(f"✗ Error executing code: {e}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print("✗ No Python code block found in reply (looking for ```python ... ```)")
-                print(f"Reply content:\n{reply[:500]}")
-                
-        except json.JSONDecodeError:
-            print(f"✗ JSON decode error. Response text: {resp.text[:200]}")
-        except Exception as e:
-            print(f"✗ Error processing response: {e}")
-            print(f"Response text: {resp.text[:200]}")
+    reply = result.get('reply', '')
+    print(f"✓ Chat response received ({len(reply)} characters)")
+    print(f"Reply: {reply[:200]}...")
+    return True
 
+def test_chat_with_chart(message: str):
+    """Test chat with chart generation."""
+    result = app_service.chat_with_chart(message, 'gpt-4o-mini')
+    
+    if "error" in result:
+        print(f"✗ Error: {result.get('error')}")
+        return False
+    
+    if "image_bytes" in result:
+        image_bytes = result.get('image_bytes')
+        media_type = result.get('media_type', 'image/png')
+        print(f"✓ Chart generated successfully")
+        print(f"  Image size: {len(image_bytes)} bytes")
+        print(f"  Media type: {media_type}")
+        
+        # Optionally save to file for testing purposes
+        output_path = 'tests/generated_plot.png'
+        os.makedirs('tests', exist_ok=True)
+        with open(output_path, 'wb') as f:
+            f.write(image_bytes)
+        print(f"  Saved to: {output_path} (for testing)")
+        return True
+    else:
+        print(f"✗ Chart generation failed: No image bytes in response")
+        return False
 
+def router_test(query: str):
+    """Route test query to appropriate test function."""
+    if 'chart' in query.lower() or 'plot' in query.lower():
+        return test_chat_with_chart(query)
+    else:
+        return test_chat(query)
 
 if __name__ == "__main__":
     test_upload_file()
     #test_ping()
-    test_chat()
+    #test_chat()
+    #test_chat_with_chart()
+    router_test('I feel like a hot mess today...can you help?')
+    router_test('I feel like a hot mess today...can you chart  the past trend of my hot mess score?')
