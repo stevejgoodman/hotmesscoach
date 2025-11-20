@@ -44,6 +44,7 @@ class AppService:
             if filename and filename.endswith('.csv'):
                 # Load into pandas DataFrame
                 self.df = pd.read_csv(BytesIO(file_content))
+                self.df = self.df.tail(20)
                 logger.info(f"CSV loaded successfully: {len(self.df)} rows, {len(self.df.columns)} columns")
                 return {
                     "filename": filename,
@@ -72,7 +73,7 @@ class AppService:
     def chat(
         self, 
         message: str, 
-        model: Optional[Literal["gpt4o", "gpt-4o-mini"]] = "gpt-4o-mini"
+        model: Optional[Literal["gpt-4o", "gpt-4o-mini"]] = "gpt-4o-mini"
     ) -> Dict[str, Any]:
         """
         Handle chat request with OpenAI.
@@ -194,7 +195,7 @@ class AppService:
     def chat_with_chart(
         self, 
         message: str, 
-        model: Optional[Literal["gpt4o", "gpt-4o-mini"]] = "gpt-4o-mini"
+        model: Optional[Literal["gpt-4o", "gpt-4o-mini"]] = "gpt-4o-mini"
     ) -> Dict[str, Any]:
         """
         Handle chat request that should generate a chart.

@@ -36,7 +36,7 @@ else:
 
 class ChatRequest(BaseModel):
     message: str
-    model: Optional[Literal["gpt4o", "gpt-4o-mini"]] = "gpt-4o-mini"
+    model: Optional[Literal["gpt-4o", "gpt-4o-mini"]] = "gpt-4o-mini"
 
 app = FastAPI()
 
@@ -54,10 +54,14 @@ async def create_upload_file(file: UploadFile = File(...)):
 async def chat(req: ChatRequest):
     """Handle chat request."""
     logger.info(f"Chat request received - model: {req.model}, message length: {len(req.message)}")
-    result = app_service.chat(req.message, req.model)
+    if 'chart' in req.message.lower() or 'plot' in req.message.lower():
+        req.model = "gpt-4o"
+        result = app_service.chat_with_chart(req.message, req.model)
+    else:
+        result = app_service.chat(req.message, req.model)
     
-    # Handle image responses
-    if "image_bytes" in result:
+    # Handle image responses - return Response object instead of dict
+    if isinstance(result, dict) and "image_bytes" in result:
         return Response(content=result["image_bytes"], media_type=result.get("media_type", "image/png"))
     
     return result
