@@ -44,7 +44,7 @@ class AppService:
             if filename and filename.endswith('.csv'):
                 # Load into pandas DataFrame
                 self.df = pd.read_csv(BytesIO(file_content))
-                self.df = self.df.tail(20)
+                self.df = self.df.tail(20) # truncate data injected into prompt for demo purposes
                 logger.info(f"CSV loaded successfully: {len(self.df)} rows, {len(self.df.columns)} columns")
                 return {
                     "filename": filename,
@@ -212,7 +212,7 @@ class AppService:
         # Build prompt for chart generation
         if self.df is not None:
             prompt = f"""{message}   
-Can you show the trend by creating a chart with python code from the 'hot_mess_score' column. 
+Can you show the trend by creating a chart with python code using the columns specified in the preceeding message.  
 Only return the python code and nothing else. here is the data: {self.df.to_string()}"""
         else:
             prompt = f"""{message}   

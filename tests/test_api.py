@@ -1,6 +1,6 @@
 import os
 import sys
-
+import pathlib
 # Add parent directory to path to import from api
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -9,12 +9,12 @@ from api.services import AppService
 # Initialize service instance for testing
 app_service = AppService()
 
-def test_upload_file():
+def test_upload_file(file_path: str):
     """Test file upload functionality."""
-    file_path = 'data/two_month_hot_mess_data.csv'
+   
     with open(file_path, 'rb') as f:
         file_content = f.read()
-        result = app_service.upload_file(file_content, 'two_month_hot_mess_data.csv')
+        result = app_service.upload_file(file_content, pathlib.Path(file_path).name)
         
         if "error" in result:
             print(f"✗ Error: {result.get('error')}")
@@ -76,7 +76,7 @@ def router_test(query: str):
         return test_chat(query)
 
 if __name__ == "__main__":
-    test_upload_file()
+    test_upload_file('data/two_month_hot_mess_data.csv')
     #test_ping()
     #test_chat()
     #test_chat_with_chart()
